@@ -36,6 +36,20 @@ async function runAssistant(threadId) {
   }
 }
 
+async function logErrorToMongoDB(error) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("chatLogs");
+    const collection = db.collection("errors");
+    await collection.insertOne({
+      error: error.message,
+      timestamp: new Date(),
+    });
+  } catch (logError) {
+    console.error("Failed to log error to MongoDB:", logError);
+  }
+}
+
 async function getAssistantResponse(threadId) {
   try {
     const messages = await openai.beta.threads.messages.list(threadId);
@@ -50,6 +64,7 @@ async function getAssistantResponse(threadId) {
     }
     throw new Error("No assistant messages found.");
   } catch (error) {
+    await logErrorToMongoDB(error);
     throw new Error(
       "Failed to retrieve messages. The error has been logged. Please try again."
     );
@@ -110,6 +125,7 @@ export async function POST(request) {
       );
     }
   } catch (error) {
+    await logErrorToMongoDB(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
