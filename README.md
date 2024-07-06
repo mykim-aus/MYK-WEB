@@ -35,7 +35,7 @@ Refer to the attached file and answer as if you are the owner of the resume. Kee
 
 ```
 
-Error Handling
+Error Monitoring
 --------------
 
 If an error occurs, all logs can be checked in MongoDB. Review the logs and update the instruction as necessary.
