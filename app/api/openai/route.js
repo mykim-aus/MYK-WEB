@@ -51,21 +51,23 @@ async function logErrorToMongoDB(error, content) {
   }
 }
 
-async function getAssistantResponse(threadId) {
+async function getAssistantResponse(threadId, userMessage) {
   try {
     const messages = await openai.beta.threads.messages.list(threadId);
 
     for (const message of messages.data) {
       if (message.role === "assistant") {
         let content = message.content[0].text.value;
-
+        console.log(content);
+        content = content.replace(/'/g, '"');
         content = content.replace(/【[^】]*】/g, "");
         return JSON.parse(content);
       }
     }
     throw new Error("No assistant messages found.");
   } catch (error) {
-    await logErrorToMongoDB(error, message?.content[0]?.text?.value);
+    console.log(error);
+    await logErrorToMongoDB(error, userMessage);
     throw new Error(
       "Failed to retrieve messages. The error has been logged. Please try again."
     );
@@ -75,10 +77,10 @@ async function getAssistantResponse(threadId) {
 export async function POST(request) {
   try {
     const json = await request.json();
-    const message = json?.message;
+    const userMessage = json?.message;
     let threadId = json?.thread_id;
 
-    if (!message) {
+    if (!userMessage) {
       return NextResponse.json(
         { error: "Message is required." },
         { status: 400 }
@@ -89,15 +91,14 @@ export async function POST(request) {
       threadId = await createThread();
     }
 
-    await createMessage(threadId, message);
+    await createMessage(threadId, userMessage);
 
     const run = await runAssistant(threadId);
 
     if (run.status === "completed") {
-      const responseObject = await getAssistantResponse(threadId);
+      const responseObject = await getAssistantResponse(threadId, userMessage);
       const { message: responseMessage, recommend } = responseObject;
 
-      // Retrieve the client's IP address
       const ipHeader = request.headers.get("x-forwarded-for");
       const ip = ipHeader
         ? ipHeader.split(",")[0].trim()
@@ -108,8 +109,8 @@ export async function POST(request) {
       const db = client.db("chatLogs");
       const collection = db.collection("logs");
       await collection.insertOne({
-        userMessage: message,
-        responseMessage,
+        userMessage: userMessage,
+        responseMessage: responseMessage,
         ip: ip,
         requestTime: new Date(),
       });
