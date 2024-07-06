@@ -3,6 +3,8 @@ Resume Chatbot System (MINYEONG KIM RESUME WEBSITE SAMPLE)
 
 This project implements a chatbot using the OpenAI API Assistant to provide resume-related assistance. The system is built using Next.js 14.
 
+[Demo : https://myk-web.vercel.app](https://myk-web.vercel.app)
+
 Installation
 ------------
 
