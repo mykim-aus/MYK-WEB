@@ -36,13 +36,14 @@ async function runAssistant(threadId) {
   }
 }
 
-async function logErrorToMongoDB(error) {
+async function logErrorToMongoDB(error, content) {
   try {
     const client = await clientPromise;
     const db = client.db("chatLogs");
     const collection = db.collection("errors");
     await collection.insertOne({
       error: error.message,
+      content: content || null,
       timestamp: new Date(),
     });
   } catch (logError) {
@@ -64,7 +65,7 @@ async function getAssistantResponse(threadId) {
     }
     throw new Error("No assistant messages found.");
   } catch (error) {
-    await logErrorToMongoDB(error);
+    await logErrorToMongoDB(error, message?.content[0]?.text?.value);
     throw new Error(
       "Failed to retrieve messages. The error has been logged. Please try again."
     );
