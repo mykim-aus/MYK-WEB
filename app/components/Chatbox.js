@@ -10,7 +10,7 @@ export default function Chatbox() {
   const [firstMessageSent, setFirstMessageSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [recommendedQuestions, setRecommendedQuestions] = useState([
-    "Tell me about you",
+    "Can you tell me about you?",
     "How did you start programming?",
     "What technologies do you specialize in?",
   ]);
@@ -21,6 +21,7 @@ export default function Chatbox() {
       setMessages((prevMessages) => [
         ...prevMessages,
         { text: message, user: "You" },
+        { text: "", user: "MINYEONG KIM", loading: true }, // Placeholder for bot response
       ]);
       setInput("");
       setIsLoading(true);
@@ -45,21 +46,40 @@ export default function Chatbox() {
             localStorage.setItem("thread_id", data.thread_id);
           }
 
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { text: data.message, user: "MINYEONG KIM" },
-          ]);
+          setMessages((prevMessages) =>
+            prevMessages.map((msg, index) => {
+              if (msg.loading) {
+                return { text: data.message, user: "MINYEONG KIM" };
+              }
+              return msg;
+            })
+          );
+
+          if (data.recommend) {
+            setRecommendedQuestions(data.recommend);
+          }
         } else {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { text: data.error || "Error occurred", user: "MINYEONG KIM" },
-          ]);
+          setMessages((prevMessages) =>
+            prevMessages.map((msg, index) => {
+              if (msg.loading) {
+                return {
+                  text: data.error || "Error occurred",
+                  user: "MINYEONG KIM",
+                };
+              }
+              return msg;
+            })
+          );
         }
       } catch (error) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { text: "Failed to send message", user: "MINYEONG KIM" },
-        ]);
+        setMessages((prevMessages) =>
+          prevMessages.map((msg, index) => {
+            if (msg.loading) {
+              return { text: "Failed to send message", user: "MINYEONG KIM" };
+            }
+            return msg;
+          })
+        );
       } finally {
         setIsLoading(false);
       }
@@ -104,17 +124,6 @@ export default function Chatbox() {
             <p className="text-2xl font-bold text-gray-400">
               Ask anything about me
             </p>
-            <div className="mt-4 flex flex-col items-center">
-              {recommendedQuestions.map((question, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSend(question)}
-                  className="mt-2 p-2 bg-gray-700 rounded-lg text-white hover:bg-gray-600 transition-colors"
-                >
-                  {question}
-                </button>
-              ))}
-            </div>
           </div>
         ) : (
           messages.map((msg, index) => (
@@ -125,20 +134,59 @@ export default function Chatbox() {
               }`}
             >
               {msg.user === "MINYEONG KIM" && (
-                <Image
-                  src={myPicture.src}
-                  alt="Bot Picture"
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover mr-2"
-                />
+                <>
+                  <Image
+                    src={myPicture.src}
+                    alt="Bot Picture"
+                    width={40}
+                    height={40}
+                    className="rounded-full object-cover mr-2"
+                  />
+                </>
               )}
               <div>
                 <p className="font-bold">{msg.user}</p>
+                {msg.loading && (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white ml-2"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    ></path>
+                  </svg>
+                )}
                 <p>{msg.text}</p>
               </div>
             </div>
           ))
+        )}
+      </div>
+      <div className="mb-4">
+        {!isLoading && recommendedQuestions.length > 0 && (
+          <div className="flex flex-col mb-4">
+            {recommendedQuestions.map((question, index) => (
+              <button
+                key={index}
+                onClick={() => handleSend(question)}
+                className="mt-2 p-2 bg-gray-700 rounded-lg text-white hover:bg-gray-600 transition-colors"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
         )}
       </div>
       <div className="flex space-x-2">

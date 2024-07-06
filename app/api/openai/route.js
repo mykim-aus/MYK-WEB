@@ -37,14 +37,20 @@ async function runAssistant(threadId) {
 async function getAssistantResponse(threadId) {
   try {
     const messages = await openai.beta.threads.messages.list(threadId);
-    for (const message of messages.data.reverse()) {
+
+    for (const message of messages.data) {
       if (message.role === "assistant") {
-        return message.content[0].text.value;
+        let content = message.content[0].text.value;
+
+        content = content.replace(/【[^】]*】/g, "");
+        return JSON.parse(content);
       }
     }
     throw new Error("No assistant messages found.");
   } catch (error) {
-    throw new Error("Failed to retrieve messages.");
+    throw new Error(
+      "Failed to retrieve messages. The error has been logged. Please try again."
+    );
   }
 }
 
@@ -70,10 +76,12 @@ export async function POST(request) {
     const run = await runAssistant(threadId);
 
     if (run.status === "completed") {
-      const responseMessage = await getAssistantResponse(threadId);
+      const responseObject = await getAssistantResponse(threadId);
+      const { message: responseMessage, recommend } = responseObject;
       return NextResponse.json({
         thread_id: threadId,
         message: responseMessage,
+        recommend: recommend,
       });
     } else {
       return NextResponse.json(
