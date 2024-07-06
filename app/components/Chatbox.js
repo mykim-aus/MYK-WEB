@@ -7,22 +7,73 @@ import myPicture from "../images/me.jpeg";
 export default function Chatbox() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [firstMessageSent, setFirstMessageSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [recommendedQuestions, setRecommendedQuestions] = useState([
+    "Tell me about you",
+    "How did you start programming?",
+    "What technologies do you specialize in?",
+  ]);
   const chatContainerRef = useRef(null);
 
-  const handleSend = () => {
-    if (input.trim()) {
+  const handleSend = async (message = input) => {
+    if (message.trim()) {
       setMessages((prevMessages) => [
         ...prevMessages,
-        { text: input, user: "You" },
+        { text: message, user: "You" },
       ]);
       setInput("");
+      setIsLoading(true);
 
-      setTimeout(() => {
+      try {
+        const storedThreadId = localStorage.getItem("thread_id");
+        const response = await fetch("/api/openai", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: message,
+            thread_id: storedThreadId,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (!storedThreadId) {
+            localStorage.setItem("thread_id", data.thread_id);
+          }
+
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { text: data.message, user: "MINYEONG KIM" },
+          ]);
+        } else {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { text: data.error || "Error occurred", user: "MINYEONG KIM" },
+          ]);
+        }
+      } catch (error) {
         setMessages((prevMessages) => [
           ...prevMessages,
-          { text: "This is a bot response", user: "MINYEONG KIM" },
+          { text: "Failed to send message", user: "MINYEONG KIM" },
         ]);
-      }, 1000);
+      } finally {
+        setIsLoading(false);
+      }
+
+      if (!firstMessageSent) {
+        setFirstMessageSent(true);
+      }
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSend();
     }
   };
 
@@ -34,10 +85,10 @@ export default function Chatbox() {
   }, [messages]);
 
   return (
-    <div className="w-full max-w-md p-4 bg-gray-800 text-white rounded-lg">
+    <div className="w-full max-w-md p-4 bg-gray-800 text-white rounded-lg transition-all duration-500 ease-in-out">
       <div
         ref={chatContainerRef}
-        className="h-64 overflow-y-scroll mb-4 border border-gray-600 p-2 rounded-lg flex flex-col"
+        className={`overflow-y-scroll scrollbar-thin scrollbar-thumb-white mb-4 border border-gray-600 p-2 rounded-lg flex flex-col h-96`}
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
@@ -46,11 +97,24 @@ export default function Chatbox() {
               alt="My Picture"
               width={100}
               height={100}
-              className="rounded-full object-cover mb-4"
+              className={`rounded-full object-cover mb-4 transition-transform duration-500 ease-in-out ${
+                firstMessageSent ? "transform -translate-y-8 scale-150" : ""
+              }`}
             />
             <p className="text-2xl font-bold text-gray-400">
               Ask anything about me
             </p>
+            <div className="mt-4 flex flex-col items-center">
+              {recommendedQuestions.map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSend(question)}
+                  className="mt-2 p-2 bg-gray-700 rounded-lg text-white hover:bg-gray-600 transition-colors"
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((msg, index) => (
@@ -83,9 +147,38 @@ export default function Chatbox() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
         />
-        <button className="p-2 bg-blue-500 rounded-lg" onClick={handleSend}>
-          Send
+        <button
+          className="p-2 bg-blue-500 rounded-lg"
+          onClick={handleSend}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <svg
+              className="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              ></path>
+            </svg>
+          ) : (
+            "Send"
+          )}
         </button>
       </div>
     </div>
