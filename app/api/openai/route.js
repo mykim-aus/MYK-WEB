@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import clientPromise from "../../lib/mongodb";
+
 const openai = new OpenAI();
 const assistantId = process.env.ASSISTANT_ID;
 
@@ -78,6 +80,20 @@ export async function POST(request) {
     if (run.status === "completed") {
       const responseObject = await getAssistantResponse(threadId);
       const { message: responseMessage, recommend } = responseObject;
+
+      // Log to MongoDB
+      const client = await clientPromise;
+      const db = client.db("chatLogs");
+      const collection = db.collection("logs");
+      await collection.insertOne({
+        userMessage: message,
+        responseMessage,
+        ip:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("remote-addr"),
+        requestTime: new Date(),
+      });
+
       return NextResponse.json({
         thread_id: threadId,
         message: responseMessage,
