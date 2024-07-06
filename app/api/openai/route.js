@@ -81,6 +81,12 @@ export async function POST(request) {
       const responseObject = await getAssistantResponse(threadId);
       const { message: responseMessage, recommend } = responseObject;
 
+      // Retrieve the client's IP address
+      const ipHeader = request.headers.get("x-forwarded-for");
+      const ip = ipHeader
+        ? ipHeader.split(",")[0].trim()
+        : request.headers.get("remote-addr");
+
       // Log to MongoDB
       const client = await clientPromise;
       const db = client.db("chatLogs");
@@ -88,9 +94,7 @@ export async function POST(request) {
       await collection.insertOne({
         userMessage: message,
         responseMessage,
-        ip:
-          request.headers.get("x-forwarded-for") ||
-          request.headers.get("remote-addr"),
+        ip: ip,
         requestTime: new Date(),
       });
 
